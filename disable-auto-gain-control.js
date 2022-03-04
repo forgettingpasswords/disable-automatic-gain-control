@@ -1,14 +1,24 @@
-// Customised port of disable-autogain-control-extension for Qutebrowser
+// ==UserScript==
+// @name         disable-auto-gain-control
+// @namespace    http://tampermonkey.net/
+// @version      0.1
+// @description  patches getUserMedia and family of functions to disable automatic gain control for audio input
+// @author       toms.ozols5@gmail.com
+// @match        *://*/*
+// @grant        GM_setValue
+// @grant        GM_getValue
+// ==/UserScript==
 
 const doDisabling = () => {
-  const AUTO_GAIN = 'autoGainControl';
-  const TRAITS_TO_DISABLE = [AUTO_GAIN];
+  const TRAITS_TO_DISABLE = ['autoGainControl', 'googAutoGainControl', 'googAutoGainControl2'];
   const PATCHES = [
-    [navigator, ['getUserMedia', 'mozGetUserMedia', 'webkitGetUserMedia']],
-    [navigator.mediaDevices, ['getUserMedia']],
-    [MediaStreamTrack.prototype, ['applyConstraints']]
+    [navigator, ['getUserMedia', 'mozGetUserMedia', 'webkitGetUserMedia']], // Legacy APIs
+    [navigator.mediaDevices, ['getUserMedia']], // Actual API
+    [MediaStreamTrack.prototype, ['applyConstraints']] // Sneaky API for post-updates
   ];
 
+  // TODO: Haven't covered some possible legacy options: constraint.optional/mandatory
+  // If in doubt - refer to the chrome extension
   const setConstraint = (constraintObj, name) => {
     const config = constraintObj.advanced
           && constraintObj.advanced.find(option => name in option)
@@ -46,16 +56,7 @@ const doDisabling = () => {
   );
 };
 
-const installDisableAutoGainControl = () => {
-  if (window.DISABLED_AUTO_GAIN) return;
-
-  const script = document.createElement('script');
-  script.textContent = '(' + doDisabling + ')();';
-
-  (document.head || document.documentElement).appendChild(script);
-  script.remove();
-
+if (!window.DISABLED_AUTO_GAIN) {
+  doDisabling();
   window.DISABLED_AUTO_GAIN = true;
-};
-
-installDisableAutoGainControl();
+}
